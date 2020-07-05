@@ -1,0 +1,60 @@
+version: "3"
+services:
+  node:
+    container_name: api
+    image: "node:14"
+    user: "node"
+    working_dir: /home/node/app
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./:/home/node/app
+    ports:
+      - 3000:3000
+    command: "npm start"
+    networks:
+      - influxdb
+    depends_on:
+      - influx
+      - chronograph
+  influx:
+    image: influxdb:1.8-alpine
+    container_name: influx
+    ports: 
+      - 8086:8086
+    networks: 
+      - influxdb
+    volumes: 
+      - $PWD:/var/lib/influxdb
+    hostname: influx
+  chronograph:
+    image: chronograf:1.8.4-alpine
+    container_name: chronograph
+    ports: 
+      - 8888:8888
+    networks: 
+      - influxdb
+    hostname: chronograph
+    volumes: 
+      - $PWD:/var/lib/chronograf
+    command: --influxdb-url=http://influx:8086
+    depends_on:
+      - influx
+  kapacitor:
+    image: kapacitor:1.5.4-alpine
+    container_name: kapacitor
+    ports: 
+      - 9092:9092
+    volumes:
+      - $PWD:/var/lib/kapacitor
+    networks:
+      - influxdb
+    hostname: kapacitor
+    environment:
+      - KAPACITOR_INFLUXDB_0_URLS_0=http://influx:8086
+    depends_on:
+      - influx
+
+networks:
+  influxdb:
+    driver: bridge
